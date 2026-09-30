@@ -1,0 +1,77 @@
+name: Terraform
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Terraform action"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+  pull_request:
+    paths:
+      - "environments/**"
+      - "modules/**"
+      - ".github/workflows/terraform.yml"
+
+permissions:
+  contents: read
+  pull-requests: read
+  id-token: write # required for GitHub OIDC -> AWS AssumeRole
+
+env:
+  TF_VERSION: "1.10.0"
+  AWS_REGION: "ap-south-1"
+  ENVIRONMENT: "prod"
+
+jobs:
+  terraform:
+    name: Terraform prod
+    runs-on: ubuntu-latest
+    # Protected environment: configure required reviewers in GitHub repo settings
+    # so `apply` is gated behind manual approval.
+    environment: prod
+    concurrency:
+      group: terraform-prod
+      cancel-in-progress: false
+
+    defaults:
+      run:
+        shell: bash
+        working-directory: environments/prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.OIDC_ROLE_INFRA }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gha-terraform-prod
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform fmt check
+        working-directory: ${{ github.workspace }}
+        run: terraform fmt -check -recursive environments modules
+
+      - name: Terraform init
+        run: terraform init -input=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+      - name: Terraform plan
+        run: terraform plan -input=false -out=tfplan
+
+      - name: Terraform apply
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
+        run: terraform apply -input=false -auto-approve tfplan

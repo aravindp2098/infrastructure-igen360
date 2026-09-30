@@ -1,0 +1,44 @@
+output "vpc_id" {
+  description = "VPC ID."
+  value       = aws_vpc.main.id
+}
+
+output "vpc_cidr_block" {
+  description = "VPC CIDR block."
+  value       = aws_vpc.main.cidr_block
+}
+
+output "public_subnet_ids" {
+  description = "Public subnet IDs."
+  value       = aws_subnet.public[*].id
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs."
+  value       = aws_subnet.private[*].id
+}
+
+output "db_subnet_group_name" {
+  description = "DB subnet group name (private subnets, Aurora)."
+  value       = aws_db_subnet_group.aurora.name
+}
+
+output "nat_gateway_ids" {
+  description = "NAT gateway IDs."
+  value       = aws_nat_gateway.main[*].id
+}
+
+output "private_route_table_ids" {
+  description = "Private route table IDs."
+  value       = aws_route_table.private[*].id
+}
+
+output "vpc_endpoint_security_group_id" {
+  description = "Security group ID for interface VPC endpoints (null if disabled)."
+  value       = var.enable_vpc_endpoints ? aws_security_group.vpc_endpoints[0].id : null
+}
+
+output "internet_gateway_id" {
+  description = "Internet gateway ID."
+  value       = aws_internet_gateway.main.id
+}
